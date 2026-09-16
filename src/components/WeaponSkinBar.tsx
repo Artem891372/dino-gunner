@@ -8,6 +8,8 @@ interface WeaponSkinBarProps {
   onSelectWeapon: (w: WeaponType) => void;
   currentSkin: DinoSkin;
   onSelectSkin: (s: DinoSkin) => void;
+  isAutoSkin: boolean;
+  onSelectAutoSkin: () => void;
   theme: ThemeMode;
 }
 
@@ -16,6 +18,8 @@ export const WeaponSkinBar: React.FC<WeaponSkinBarProps> = ({
   onSelectWeapon,
   currentSkin,
   onSelectSkin,
+  isAutoSkin,
+  onSelectAutoSkin,
   theme
 }) => {
   const isDark = theme === 'dark';
@@ -56,6 +60,23 @@ export const WeaponSkinBar: React.FC<WeaponSkinBarProps> = ({
       {/* Dino Skins Selector */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
         <span className="font-pixel text-[10px] opacity-70 whitespace-nowrap mr-1">Скин:</span>
+
+        <button
+          onClick={onSelectAutoSkin}
+          className={`px-2 py-1 rounded border font-pixel text-[10px] transition-all cursor-pointer whitespace-nowrap ${
+            isAutoSkin
+              ? isDark
+                ? 'bg-cyan-950 border-cyan-400 text-cyan-300 shadow-[0_0_8px_rgba(6,182,212,0.3)]'
+                : 'bg-cyan-100 border-cyan-500 text-cyan-900 shadow-sm'
+              : isDark
+              ? 'bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+              : 'bg-white border-stone-300 text-stone-600 hover:text-stone-900'
+          }`}
+          title="Окрас динозавра автоматически подстраивается под биом, погоду и время суток"
+        >
+          АВТО
+        </button>
+
         {skinsList.map(sId => {
           const s = SKINS_DATA[sId];
           const isSelected = currentSkin === sId;

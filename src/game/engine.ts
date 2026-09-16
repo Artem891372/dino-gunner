@@ -27,6 +27,8 @@ import {
   DayPhase,
   WaveType,
   ParallaxLayerObject,
+  BiomeType,
+  BiomeTerrain,
   WeatherParticle,
   Atmosphere
 } from './types';
@@ -45,7 +47,7 @@ import {
   drawAILaserSight,
   drawWeaponPickups,
   drawComboCounter,
-  drawParallax,
+  drawBiome,
   drawAtmosphereOverlay,
   drawWeatherLayer,
   drawBanner
@@ -136,6 +138,7 @@ export class GameEngine {
   public gameMode: GameMode = 'ai';
   public currentWeapon: WeaponType = 'rifle';
   public currentSkin: DinoSkin = 'classic';
+  public autoSkin: boolean = true;
   public showLaserSight: boolean = true;
 
   // Game Progress
@@ -178,6 +181,19 @@ export class GameEngine {
   public weatherParticles: WeatherParticle[] = [];
   private prevWeatherParticles: WeatherParticle[] = [];
 
+  // Biomes (fields / forest / mountains / hills / desert) matching the weather
+  public biome: BiomeType = 'hills';
+  private biomePrev: BiomeType = 'hills';
+  private biomeFade: number = 1;
+  private biomeFadeDuration: number = 4;
+  private biomes: Record<BiomeType, BiomeTerrain> = {
+    fields: { far: [], mid: [] },
+    forest: { far: [], mid: [] },
+    mountains: { far: [], mid: [] },
+    hills: { far: [], mid: [] },
+    desert: { far: [], mid: [] }
+  };
+
   public waveType: WaveType = 'calm';
   public waveNumber: number = 0;
   private waveTimer: number = 8;
@@ -204,8 +220,6 @@ export class GameEngine {
   public clouds: Cloud[] = [];
   public stars: Star[] = [];
   public groundDetails: GroundDetail[] = [];
-  public farHills: ParallaxLayerObject[] = [];
-  public midDunes: ParallaxLayerObject[] = [];
 
   // Controllers
   public aiController: AIController;
@@ -227,6 +241,8 @@ export class GameEngine {
   private onGameOverCallback?: (deathInfo: DeathInfo) => void;
   private onTelemetryUpdate?: (telemetry: AITelemetry) => void;
   private onWeaponPickupCallback?: (weapon: WeaponType) => void;
+  private onSkinChangeCallback?: (skin: DinoSkin) => void;
+  private onDayPhaseChangeCallback?: (phase: DayPhase) => void;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -301,12 +317,16 @@ export class GameEngine {
     onScore: (score: number, highScore: number, kills: number, distance: number) => void,
     onGameOver: (deathInfo: DeathInfo) => void,
     onTelemetry: (telemetry: AITelemetry) => void,
-    onWeaponPickup?: (weapon: WeaponType) => void
+    onWeaponPickup?: (weapon: WeaponType) => void,
+    onSkinChange?: (skin: DinoSkin) => void,
+    onDayPhaseChange?: (phase: DayPhase) => void
   ) {
     this.onScoreUpdate = onScore;
     this.onGameOverCallback = onGameOver;
     this.onTelemetryUpdate = onTelemetry;
     this.onWeaponPickupCallback = onWeaponPickup;
+    this.onSkinChangeCallback = onSkinChange;
+    this.onDayPhaseChangeCallback = onDayPhaseChange;
   }
 
   public resize(width: number, height: number) {
@@ -358,34 +378,75 @@ export class GameEngine {
       });
     }
 
-    // Parallax layers (far hills + near dunes), spaced over one wrap period
-    this.farHills = [];
-    this.midDunes = [];
+    // Biomes: every landscape type gets its own far & near parallax layers,
+    // generated over one wrap period so they scroll seamlessly
+    this.generateBiomes();
+  }
+
+  private generateBiomes() {
     const period = this.width + 400;
+    const makeLayer = (minW: number, maxW: number, minH: number, maxH: number, spacing: number) => {
+      const objects: ParallaxLayerObject[] = [];
+      let x = -220;
+      while (x < period) {
+        const w = minW + Math.random() * (maxW - minW);
+        objects.push({
+          x,
+          width: w,
+          height: minH + Math.random() * (maxH - minH),
+          variant: Math.floor(Math.random() * 3)
+        });
+        x += w * spacing;
+      }
+      return objects;
+    };
 
-    let fx = -150;
-    while (fx < period) {
-      const w = 160 + Math.random() * 220;
-      this.farHills.push({
-        x: fx,
-        width: w,
-        height: 50 + Math.random() * 80,
-        variant: Math.floor(Math.random() * 3)
-      });
-      fx += w * 0.7;
-    }
+    this.biomes = {
+      // vast open fields with low mounds
+      fields: {
+        far: makeLayer(300, 520, 16, 30, 0.7),
+        mid: makeLayer(240, 420, 10, 22, 0.65)
+      },
+      // dense tree lines
+      forest: {
+        far: makeLayer(90, 170, 55, 95, 0.72),
+        mid: makeLayer(70, 130, 80, 140, 0.62)
+      },
+      // tall jagged peaks + foothills
+      mountains: {
+        far: makeLayer(220, 340, 130, 215, 0.72),
+        mid: makeLayer(180, 300, 55, 105, 0.68)
+      },
+      // soft rolling hills
+      hills: {
+        far: makeLayer(260, 420, 60, 115, 0.7),
+        mid: makeLayer(220, 360, 35, 75, 0.65)
+      },
+      // dunes and flat-topped mesas
+      desert: {
+        far: makeLayer(220, 340, 70, 120, 0.72),
+        mid: makeLayer(260, 440, 26, 50, 0.62)
+      }
+    };
+  }
 
-    let mx = -220;
-    while (mx < period) {
-      const w = 220 + Math.random() * 260;
-      this.midDunes.push({
-        x: mx,
-        width: w,
-        height: 24 + Math.random() * 40,
-        variant: Math.floor(Math.random() * 3)
-      });
-      mx += w * 0.65;
-    }
+  private chooseBiomeForWeather(weather: WeatherType): BiomeType {
+    const matches: Record<WeatherType, BiomeType[]> = {
+      clear: ['hills', 'fields', 'mountains', 'forest'],
+      rain: ['forest', 'fields'],
+      snow: ['mountains', 'hills'],
+      sandstorm: ['desert']
+    };
+    const options = matches[weather].filter(b => b !== this.biome);
+    const pool = options.length > 0 ? options : matches[weather];
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  private setBiome(next: BiomeType) {
+    if (next === this.biome) return;
+    this.biomePrev = this.biome;
+    this.biome = next;
+    this.biomeFade = 0;
   }
 
   // ----------------------------------------------------
@@ -699,9 +760,46 @@ export class GameEngine {
       this.rollWeather();
     }
 
+    if (this.biomeFade < 1) {
+      this.biomeFade = Math.min(1, this.biomeFade + dt / this.biomeFadeDuration);
+    }
+
     // Music tempo follows the run speed
     const speedNorm = (this.gameSpeed - this.baseGameSpeed) / (this.maxGameSpeed - this.baseGameSpeed);
     soundManager.setMusicBpm(112 + Math.max(0, Math.min(1, speedNorm)) * 44);
+
+    this.updateEnvironmentSkin();
+  }
+
+  // The dino adapts its look to the environment: biome, weather and time of day
+  private pickEnvironmentSkin(): DinoSkin {
+    const { night } = this.getAtmosphere();
+
+    if (this.weather === 'sandstorm' || this.biome === 'desert') return 'golden';
+    if (this.weather === 'snow') return 'classic';
+    if (night > 0.6) return 'cyber';
+    if (this.weather === 'rain' || this.biome === 'forest' || this.biome === 'fields') return 'military';
+    if (this.biome === 'mountains') return 'classic';
+    return 'classic';
+  }
+
+  private updateEnvironmentSkin() {
+    if (!this.autoSkin) return;
+
+    const desired = this.pickEnvironmentSkin();
+    if (desired === this.currentSkin) return;
+
+    this.currentSkin = desired;
+    this.createSparkParticles(
+      this.hero.x + this.hero.width / 2,
+      this.hero.y + this.hero.height / 2,
+      '#ffffff',
+      6
+    );
+
+    if (this.onSkinChangeCallback) {
+      this.onSkinChangeCallback(desired);
+    }
   }
 
   private advanceDayPhase() {
@@ -712,13 +810,10 @@ export class GameEngine {
     this.phaseDuration = durations[this.dayPhase] * (0.8 + Math.random() * 0.4);
     this.phaseTimer = this.phaseDuration;
 
-    const labels: Record<DayPhase, string> = {
-      day: '☀ ДЕНЬ',
-      sunset: '🌇 ЗАКАТ',
-      night: '🌙 НОЧЬ',
-      dawn: '🌅 РАССВЕТ'
-    };
-    this.showBanner(labels[this.dayPhase], this.dayPhase === 'night' ? '#9db4ff' : '#ffcc66', 2.0);
+    // Let the UI follow the day/night cycle
+    if (this.onDayPhaseChangeCallback) {
+      this.onDayPhaseChangeCallback(this.dayPhase);
+    }
   }
 
   private rollWeather() {
@@ -743,6 +838,9 @@ export class GameEngine {
     for (let i = 0; i < counts[weather]; i++) {
       this.weatherParticles.push(this.createWeatherParticle(weather, true));
     }
+
+    // Landscape matches the new weather
+    this.setBiome(this.chooseBiomeForWeather(weather));
   }
 
   private createWeatherParticle(weather: WeatherType, anywhere: boolean): WeatherParticle {
@@ -836,6 +934,36 @@ export class GameEngine {
         break;
     }
 
+    // Sun & moon travel along one continuous arc across all phases:
+    // dawn 0-0.3 -> day 0.3-0.9 -> sunset 0.9-1.35 (sun), night 0-1 -> dawn 1-1.45 (moon)
+    let sunP = -1;
+    let moonP = -1;
+    switch (this.dayPhase) {
+      case 'day':
+        sunP = 0.3 + progress * 0.6;
+        break;
+      case 'sunset':
+        sunP = 0.9 + progress * 0.45;
+        break;
+      case 'night':
+        moonP = progress;
+        break;
+      case 'dawn':
+        sunP = progress * 0.3;
+        moonP = 1 + progress * 0.45;
+        break;
+    }
+
+    const arcPos = (p: number) => ({
+      x: 0.04 + p * 0.92,
+      y: 0.82 - Math.sin(Math.min(p, 2) * Math.PI) * 0.62
+    });
+    const celestial = (p: number) => {
+      if (p < 0) return { x: 0, y: 0, visible: false };
+      const pos = arcPos(p);
+      return { ...pos, visible: pos.x > -0.06 && pos.x < 1.06 && pos.y < 0.95 };
+    };
+
     const fadeSmooth = this.weatherFade * this.weatherFade * (3 - 2 * this.weatherFade); // smoothstep
     return {
       night,
@@ -843,7 +971,9 @@ export class GameEngine {
       weather: this.weather,
       weatherStrength: fadeSmooth,
       previousWeather: this.weatherPrev,
-      previousStrength: 1 - fadeSmooth
+      previousStrength: 1 - fadeSmooth,
+      sun: celestial(sunP),
+      moon: celestial(moonP)
     };
   }
 
@@ -864,15 +994,18 @@ export class GameEngine {
   // SCENERY UPDATE
   // ----------------------------------------------------
   private updateScenery(_dt: number) {
-    // Parallax hills & dunes scroll slower than the ground
+    // All biome parallax layers scroll slower than the ground (cheap, keeps swaps seamless)
     const wrapPeriod = this.width + 400;
-    this.farHills.forEach(h => {
-      h.x -= this.gameSpeed * 0.12;
-      if (h.x + h.width < -80) h.x += wrapPeriod;
-    });
-    this.midDunes.forEach(d => {
-      d.x -= this.gameSpeed * 0.3;
-      if (d.x + d.width < -80) d.x += wrapPeriod;
+    (Object.keys(this.biomes) as BiomeType[]).forEach(key => {
+      const terrain = this.biomes[key];
+      terrain.far.forEach(h => {
+        h.x -= this.gameSpeed * 0.12;
+        if (h.x + h.width < -80) h.x += wrapPeriod;
+      });
+      terrain.mid.forEach(d => {
+        d.x -= this.gameSpeed * 0.3;
+        if (d.x + d.width < -80) d.x += wrapPeriod;
+      });
     });
 
     // Clouds
@@ -976,13 +1109,17 @@ export class GameEngine {
     const w = 48;
     const h = 42;
 
+    // Boss type also depends on the landscape
+    const pool = this.groundEnemyPool();
+    const type = pool[Math.floor(Math.random() * pool.length)];
+
     this.enemies.push({
       id: this.entityIdCounter++,
       x: this.width + 60,
       y: this.groundY - h,
       width: w,
       height: h,
-      type: 'robot_drone',
+      type,
       isFlying: false,
       isBoss: true,
       hp,
@@ -1021,16 +1158,16 @@ export class GameEngine {
   }
 
   private spawnObstacle() {
-    const types: ObstacleType[] = [
-      'cactus_small',
-      'cactus_double',
-      'cactus_triple',
-      'cactus_large',
-      'rock',
-      'spikes',
-      'barricade'
-    ];
-    const type = types[Math.floor(Math.random() * types.length)];
+    // Obstacle mix follows the current biome
+    const pools: Record<BiomeType, ObstacleType[]> = {
+      desert: ['cactus_small', 'cactus_double', 'cactus_large', 'tumbleweed', 'rock'],
+      forest: ['stump', 'log', 'bush', 'rock', 'cactus_small'],
+      fields: ['bush', 'crate', 'rock', 'cactus_double', 'stump'],
+      mountains: ['rock', 'spikes', 'barricade', 'log', 'crate'],
+      hills: ['cactus_small', 'cactus_triple', 'bush', 'rock', 'barricade']
+    };
+    const pool = pools[this.biome];
+    const type = pool[Math.floor(Math.random() * pool.length)];
 
     let w = 24;
     let h = 34;
@@ -1050,6 +1187,16 @@ export class GameEngine {
         w = 40; h = 20; break;
       case 'barricade':
         w = 36; h = 32; break;
+      case 'bush':
+        w = 26; h = 18; break;
+      case 'stump':
+        w = 22; h = 22; break;
+      case 'log':
+        w = 52; h = 16; break;
+      case 'tumbleweed':
+        w = 22; h = 22; break;
+      case 'crate':
+        w = 28; h = 28; break;
     }
 
     this.obstacles.push({
@@ -1062,13 +1209,26 @@ export class GameEngine {
     });
   }
 
+  // Ground enemy mix follows the current biome
+  private groundEnemyPool(): GroundEnemyType[] {
+    const pools: Record<BiomeType, GroundEnemyType[]> = {
+      desert: ['scorpion', 'sand_spider', 'robot_drone'],
+      forest: ['bone_raptor', 'robot_drone', 'scorpion'],
+      fields: ['bone_raptor', 'scorpion', 'cyber_skull'],
+      mountains: ['robot_drone', 'cyber_skull', 'bone_raptor'],
+      hills: ['scorpion', 'bone_raptor', 'cyber_skull']
+    };
+    return pools[this.biome];
+  }
+
   private spawnGroundEnemy() {
-    const types: GroundEnemyType[] = ['robot_drone', 'scorpion', 'bone_raptor'];
-    const type = types[Math.floor(Math.random() * types.length)];
+    const pool = this.groundEnemyPool();
+    const type = pool[Math.floor(Math.random() * pool.length)];
 
     const w = 32;
     const h = 28;
-    const hp = type === 'robot_drone' ? 2 : 1;
+    const hp = type === 'robot_drone' || type === 'cyber_skull' ? 2 : 1;
+    const scoreValue = type === 'cyber_skull' ? 90 : type === 'sand_spider' ? 70 : 60;
 
     this.enemies.push({
       id: this.entityIdCounter++,
@@ -1080,15 +1240,23 @@ export class GameEngine {
       isFlying: false,
       hp,
       maxHp: hp,
-      scoreValue: 60,
+      scoreValue,
       animFrame: 0,
       animTimer: 0
     });
   }
 
   private spawnFlyingEnemy(spawnX?: number, forcedAltitude?: 'low' | 'mid' | 'high') {
-    const types: FlyingEnemyType[] = ['pterodactyl', 'flying_drone', 'mutant_bat'];
-    const type = types[Math.floor(Math.random() * types.length)];
+    // Flying enemy mix follows the current biome
+    const pools: Record<BiomeType, FlyingEnemyType[]> = {
+      desert: ['vulture', 'flying_drone', 'pterodactyl'],
+      forest: ['mutant_bat', 'pterodactyl', 'flying_drone'],
+      fields: ['pterodactyl', 'mutant_bat', 'vulture'],
+      mountains: ['pterodactyl', 'flying_drone', 'vulture'],
+      hills: ['pterodactyl', 'mutant_bat', 'flying_drone']
+    };
+    const pool = pools[this.biome];
+    const type = pool[Math.floor(Math.random() * pool.length)];
 
     const altitudes: Array<'low' | 'mid' | 'high'> = ['low', 'mid', 'high'];
     const altitude = forcedAltitude || altitudes[Math.floor(Math.random() * altitudes.length)];
@@ -1648,8 +1816,16 @@ export class GameEngine {
     this.ctx.save();
     this.ctx.translate(Math.round(shakeX), Math.round(shakeY));
 
-    // 2. Parallax layers (far hills -> near dunes)
-    drawParallax(this.ctx, this.groundY, this.theme, this.farHills, this.midDunes);
+    // 2. Parallax biome layers (crossfade when weather changes the landscape)
+    const snowAmount = Math.min(1, (atmosphere.weather === 'snow' ? atmosphere.weatherStrength : 0) + (atmosphere.previousWeather === 'snow' ? atmosphere.previousStrength : 0));
+    if (this.biomeFade < 1) {
+      const prev = this.biomes[this.biomePrev];
+      drawBiome(this.ctx, this.groundY, this.theme, this.biomePrev, 'far', prev.far, 1 - this.biomeFade, snowAmount);
+      drawBiome(this.ctx, this.groundY, this.theme, this.biomePrev, 'mid', prev.mid, 1 - this.biomeFade, snowAmount);
+    }
+    const currentTerrain = this.biomes[this.biome];
+    drawBiome(this.ctx, this.groundY, this.theme, this.biome, 'far', currentTerrain.far, this.biomeFade, snowAmount);
+    drawBiome(this.ctx, this.groundY, this.theme, this.biome, 'mid', currentTerrain.mid, this.biomeFade, snowAmount);
 
     // 3. Ground & Pebbles
     drawGround(this.ctx, this.width, this.groundY, this.theme, this.groundDetails);
@@ -1711,6 +1887,11 @@ export class GameEngine {
       case 'rock': return 'Каменный валун';
       case 'spikes': return 'Шипастая ловушка';
       case 'barricade': return 'Заградительный барьер';
+      case 'bush': return 'Колючий куст';
+      case 'stump': return 'Трухлявый пень';
+      case 'log': return 'Упавшее бревно';
+      case 'tumbleweed': return 'Перекати-поле';
+      case 'crate': return 'Ящик с припасами';
       default: return 'Препятствие';
     }
   }
@@ -1723,6 +1904,9 @@ export class GameEngine {
       case 'robot_drone': return 'Кибер-краб';
       case 'scorpion': return 'Ядовитый скорпион';
       case 'bone_raptor': return 'Костяной раптор';
+      case 'cyber_skull': return 'Кибер-череп';
+      case 'sand_spider': return 'Песчаный паук';
+      case 'vulture': return 'Стервятник';
       default: return 'Враг';
     }
   }

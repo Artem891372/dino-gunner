@@ -18,6 +18,7 @@ import {
   AITelemetry,
   Atmosphere,
   ParallaxLayerObject,
+  BiomeType,
   WeatherParticle,
   WeatherType
 } from './types';
@@ -133,6 +134,9 @@ export function drawDinoHero(
     drawRunningDino(ctx, x, y, bodyColor, bellyColor, eyeColor, pupilColor, legFrame);
   }
 
+  // Skin accessory: hats / implants matching the current biome-set skin
+  drawDinoAccessory(ctx, x, y, skin, hero.isDucking ? 'duck' : !hero.isGrounded ? 'jump' : 'run');
+
   // Draw Gun in Dino's Hand / Mount
   // Gun origin point
   let gunOriginX = x + 30;
@@ -145,6 +149,62 @@ export function drawDinoHero(
   drawGun(ctx, gunOriginX + recoilX, gunOriginY + recoilY, hero.gunAngle, weapon, theme, hero.recoilOffset > 2);
 
   ctx.restore();
+}
+
+function drawDinoAccessory(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  skin: DinoSkin,
+  pose: 'run' | 'jump' | 'duck'
+) {
+  const isDuck = pose === 'duck';
+  const hx = isDuck ? x + 32 : x + 22;
+  const hy = isDuck ? y + 8 : y;
+
+  switch (skin) {
+    case 'classic': {
+      // Safari / ranger hat
+      drawPixelRect(ctx, hx - 4, hy - 2, 28, 3, '#6b4f2a');
+      drawPixelRect(ctx, hx + 2, hy - 8, 16, 7, '#8d6e3f');
+      drawPixelRect(ctx, hx + 2, hy - 8, 16, 2, '#a5824b');
+      break;
+    }
+    case 'military': {
+      // Combat helmet with strap
+      drawPixelRect(ctx, hx, hy - 7, 22, 6, '#2f4523');
+      drawPixelRect(ctx, hx + 2, hy - 9, 18, 3, '#3c5a2e');
+      drawPixelRect(ctx, hx + 1, hy - 1, 20, 2, '#24361b');
+      break;
+    }
+    case 'cyber': {
+      // Cyber implants: antenna, neon visor, ear module
+      drawPixelRect(ctx, hx + 14, hy - 8, 2, 8, '#64748b');
+      drawPixelRect(ctx, hx + 11, hy - 11, 8, 3, '#ff007f');
+      drawPixelRect(ctx, hx + 3, hy + 2, 11, 4, 'rgba(0, 240, 255, 0.75)');
+      drawPixelRect(ctx, hx + 3, hy + 2, 11, 1, '#00f0ff');
+      drawPixelRect(ctx, hx - 2, hy + 7, 3, 5, '#00f0ff');
+      break;
+    }
+    case 'golden': {
+      // Pharaoh crown with gem
+      drawPixelRect(ctx, hx + 1, hy - 4, 20, 3, '#fbbf24');
+      drawPixelRect(ctx, hx + 1, hy - 10, 20, 2, '#f59e0b');
+      drawPixelRect(ctx, hx + 3, hy - 8, 3, 4, '#fbbf24');
+      drawPixelRect(ctx, hx + 10, hy - 8, 3, 4, '#fbbf24');
+      drawPixelRect(ctx, hx + 17, hy - 8, 3, 4, '#fbbf24');
+      drawPixelRect(ctx, hx + 9, hy - 5, 4, 3, '#ef4444');
+      break;
+    }
+    case 'lava': {
+      // Horned magma helmet
+      drawPixelRect(ctx, hx, hy - 6, 22, 5, '#3f1d1d');
+      drawPixelRect(ctx, hx + 1, hy - 11, 5, 6, '#f97316');
+      drawPixelRect(ctx, hx + 16, hy - 11, 5, 6, '#f97316');
+      drawPixelRect(ctx, hx + 4, hy - 4, 14, 2, '#fbbf24');
+      break;
+    }
+  }
 }
 
 function drawRunningDino(
@@ -282,6 +342,7 @@ function drawDeadDino(
 
   // X Eye (KO)
   drawRunningDino(ctx, x, y, color, '#444444', '#ffffff', '#ff0000', 0);
+  drawDinoAccessory(ctx, x, y, skin, 'run');
 
   // Draw X on Eye
   ctx.strokeStyle = '#ff0000';
@@ -408,10 +469,95 @@ export function drawObstacle(ctx: CanvasRenderingContext2D, obs: Obstacle, theme
     case 'barricade':
       drawBarricadeObstacle(ctx, x, y, w, h, theme);
       break;
+    case 'bush':
+      drawBushObstacle(ctx, x, y, w, h, theme);
+      break;
+    case 'stump':
+      drawStumpObstacle(ctx, x, y, w, h, theme);
+      break;
+    case 'log':
+      drawLogObstacle(ctx, x, y, w, h, theme);
+      break;
+    case 'tumbleweed':
+      drawTumbleweedObstacle(ctx, x, y, w, h, theme);
+      break;
+    case 'crate':
+      drawCrateObstacle(ctx, x, y, w, h, theme);
+      break;
     default:
       drawSingleCactus(ctx, x, y, color, false);
       break;
   }
+}
+
+function drawBushObstacle(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, theme: ThemeMode) {
+  const leaf = theme === 'dark' ? '#2f4a2c' : '#5b7a4a';
+  const leafLight = theme === 'dark' ? '#3f5a3a' : '#74975c';
+
+  drawPixelRect(ctx, x + 3, y + 5, w - 6, h - 5, leaf);
+  drawPixelRect(ctx, x, y + 9, w, h - 9, leaf);
+  drawPixelRect(ctx, x + 6, y + 1, w - 12, 6, leaf);
+  drawPixelRect(ctx, x + 5, y + 4, 5, 4, leafLight);
+  drawPixelRect(ctx, x + w - 10, y + 7, 5, 4, leafLight);
+  drawPixelRect(ctx, x + w / 2 - 2, y - 1, 4, 4, leafLight);
+}
+
+function drawStumpObstacle(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, theme: ThemeMode) {
+  const wood = theme === 'dark' ? '#5b4632' : '#8a6a45';
+  const woodDark = theme === 'dark' ? '#3f3021' : '#6b4f31';
+  const rings = theme === 'dark' ? '#7a5f42' : '#a58355';
+
+  drawPixelRect(ctx, x + 2, y + 7, w - 4, h - 7, woodDark);
+  drawPixelRect(ctx, x + 4, y, w - 8, 8, wood);
+  drawPixelRect(ctx, x + 7, y + 2, w - 14, 4, rings);
+  drawPixelRect(ctx, x + 9, y + 3, w - 18, 2, woodDark);
+  // roots
+  drawPixelRect(ctx, x, y + h - 3, w, 3, woodDark);
+  drawPixelRect(ctx, x + 3, y + h - 6, 4, 3, wood);
+  drawPixelRect(ctx, x + w - 7, y + h - 6, 4, 3, wood);
+}
+
+function drawLogObstacle(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, theme: ThemeMode) {
+  const wood = theme === 'dark' ? '#5b4632' : '#8a6a45';
+  const woodDark = theme === 'dark' ? '#3a2c1e' : '#6b4f31';
+  const woodLight = theme === 'dark' ? '#7a5f42' : '#a58355';
+
+  drawPixelRect(ctx, x, y + 3, w, h - 3, wood);
+  drawPixelRect(ctx, x, y + 3, w, 2, woodLight);
+  drawPixelRect(ctx, x, y + 3, 4, h - 3, woodDark);
+  drawPixelRect(ctx, x + w - 4, y + 3, 4, h - 3, woodDark);
+  // growth rings on the cut ends
+  drawPixelRect(ctx, x + 4, y + 7, 2, 4, woodDark);
+  drawPixelRect(ctx, x + w - 6, y + 7, 2, 4, woodDark);
+  // broken branch stub
+  drawPixelRect(ctx, x + w / 2 - 3, y - 3, 6, 7, wood);
+  drawPixelRect(ctx, x + w / 2 - 1, y - 5, 3, 3, woodDark);
+}
+
+function drawTumbleweedObstacle(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, theme: ThemeMode) {
+  const color = theme === 'dark' ? '#7a6a3f' : '#a89058';
+  const dark = theme === 'dark' ? '#4f4428' : '#7d6a3e';
+  const shift = Math.floor(performance.now() / 120) % 2;
+
+  drawPixelRect(ctx, x + 4, y, w - 8, h, color);
+  drawPixelRect(ctx, x, y + 4, w, h - 8, color);
+  drawPixelRect(ctx, x + 2, y + 2, 3, 3, dark);
+  drawPixelRect(ctx, x + w - 5, y + h - 5, 3, 3, dark);
+  drawPixelRect(ctx, x + w / 2 - 2, y + h / 2 - 1 + (shift ? 2 : -2), 5, 2, dark);
+}
+
+function drawCrateObstacle(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, theme: ThemeMode) {
+  const base = theme === 'dark' ? '#6b5a2e' : '#b08948';
+  const edge = theme === 'dark' ? '#463b1e' : '#7d6132';
+  const band = theme === 'dark' ? '#222222' : '#333333';
+
+  drawPixelRect(ctx, x, y, w, h, base);
+  drawPixelRect(ctx, x, y, w, 3, edge);
+  drawPixelRect(ctx, x, y + h - 3, w, 3, edge);
+  drawPixelRect(ctx, x, y, 3, h, edge);
+  drawPixelRect(ctx, x + w - 3, y, 3, h, edge);
+  drawPixelRect(ctx, x, y + h / 2 - 2, w, 4, band);
+  drawPixelRect(ctx, x + w / 2 - 2, y, 4, h, band);
 }
 
 function drawSingleCactus(ctx: CanvasRenderingContext2D, x: number, y: number, color: string, isLarge: boolean) {
@@ -576,6 +722,33 @@ function drawFlyingEnemy(ctx: CanvasRenderingContext2D, enemy: Enemy, x: number,
 
     // Thruster exhaust particles
     drawPixelRect(ctx, x + 14, y + 19, 4, 3, '#ffaa00');
+  } else if (enemy.type === 'vulture') {
+    // Desert Vulture
+    const bodyColor = theme === 'dark' ? '#a8a29e' : '#57534e';
+    const headColor = theme === 'dark' ? '#e7e5e4' : '#d6d3d1';
+    const beakColor = '#f59e0b';
+
+    // Body & tail
+    drawPixelRect(ctx, x + 10, y + 8, 16, 8, bodyColor);
+    drawPixelRect(ctx, x + 2, y + 10, 8, 3, bodyColor);
+
+    // Bald head & hooked beak
+    drawPixelRect(ctx, x + 24, y + 6, 8, 7, headColor);
+    drawPixelRect(ctx, x + 30, y + 8, 5, 3, beakColor);
+    drawPixelRect(ctx, x + 27, y + 8, 2, 2, '#111111');
+
+    // Flapping wings
+    if (wingFrame === 0) {
+      drawPixelRect(ctx, x + 8, y - 4, 18, 5, bodyColor);
+      drawPixelRect(ctx, x + 12, y - 8, 10, 5, bodyColor);
+    } else {
+      drawPixelRect(ctx, x + 8, y + 16, 18, 5, bodyColor);
+      drawPixelRect(ctx, x + 12, y + 20, 10, 5, bodyColor);
+    }
+
+    // Talons
+    drawPixelRect(ctx, x + 14, y + 16, 2, 4, beakColor);
+    drawPixelRect(ctx, x + 18, y + 16, 2, 4, beakColor);
   } else {
     // Mutant Bat
     const batColor = theme === 'dark' ? '#ff0055' : '#881337';
@@ -641,8 +814,51 @@ function drawGroundEnemy(ctx: CanvasRenderingContext2D, enemy: Enemy, x: number,
     drawPixelRect(ctx, x + 8, y + 20, 3, 4, color);
     drawPixelRect(ctx, x + 14, y + 20, 3, 4, color);
     drawPixelRect(ctx, x + 20, y + 20, 3, 4, color);
+  } else if (enemy.type === 'cyber_skull') {
+    // Cyber Skull with implants
+    const metalColor = theme === 'dark' ? '#9ca3af' : '#6b7280';
+    const metalDark = theme === 'dark' ? '#4b5563' : '#374151';
+    const glow = '#00f0ff';
+
+    drawPixelRect(ctx, x + 8, y + 2, 18, 12, metalColor);
+    drawPixelRect(ctx, x + 10, y + 12, 14, 6, metalColor); // jaw
+    // Eye sockets with neon glow
+    drawPixelRect(ctx, x + 12, y + 6, 4, 4, '#111111');
+    drawPixelRect(ctx, x + 20, y + 6, 4, 4, '#111111');
+    drawPixelRect(ctx, x + 13, y + 7, 2, 2, glow);
+    drawPixelRect(ctx, x + 21, y + 7, 2, 2, glow);
+    // Teeth
+    drawPixelRect(ctx, x + 12, y + 13, 2, 3, '#ffffff');
+    drawPixelRect(ctx, x + 17, y + 13, 2, 3, '#ffffff');
+    drawPixelRect(ctx, x + 22, y + 13, 2, 3, '#ffffff');
+    // Antenna implant
+    drawPixelRect(ctx, x + 16, y - 4, 2, 6, metalDark);
+    drawPixelRect(ctx, x + 13, y - 6, 8, 2, '#ff0055');
+    // Hovering leg struts
+    drawPixelRect(ctx, x + 10 - legFrame, y + 18, 4, 7, metalDark);
+    drawPixelRect(ctx, x + 20 + legFrame, y + 18, 4, 7, metalDark);
+  } else if (enemy.type === 'sand_spider') {
+    // Sand Spider
+    const body = theme === 'dark' ? '#c084fc' : '#6d28d9';
+    const legs = theme === 'dark' ? '#7c3aed' : '#4c1d95';
+    const off = legFrame ? 1 : -1;
+
+    drawPixelRect(ctx, x + 6, y + 10, 18, 10, body);
+    drawPixelRect(ctx, x + 22, y + 8, 8, 8, body);
+    // Four red eyes
+    drawPixelRect(ctx, x + 24, y + 10, 2, 2, '#ff0000');
+    drawPixelRect(ctx, x + 28, y + 10, 2, 2, '#ff0000');
+    drawPixelRect(ctx, x + 25, y + 13, 2, 2, '#ff0000');
+    // Legs
+    drawPixelRect(ctx, x + 2, y + 8 + off, 6, 3, legs);
+    drawPixelRect(ctx, x + 4, y + 20 - off, 6, 3, legs);
+    drawPixelRect(ctx, x + 12, y + 6 - off, 4, 4, legs);
+    drawPixelRect(ctx, x + 14, y + 20 + off, 4, 4, legs);
+    drawPixelRect(ctx, x + 20, y + 6 + off, 4, 4, legs);
+    // Stinger
+    drawPixelRect(ctx, x + 2, y + 6, 3, 3, '#ff5500');
   } else {
-    // Bone Raptor / Cyber Skull
+    // Bone Raptor
     const boneColor = theme === 'dark' ? '#fcd34d' : '#b45309';
 
     drawPixelRect(ctx, x + 8, y + 4, 18, 14, boneColor);
@@ -869,8 +1085,16 @@ export function drawBackground(
     });
   }
 
-  // Sun or Moon (crossfades through the day/night cycle)
-  drawCelestialBody(ctx, width, atmosphere);
+  // Sun & moon travel along an arc (rise / set); clipped to the sky above the horizon
+  if (atmosphere) {
+    const horizon = Math.round(height * 0.82);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, width, horizon);
+    ctx.clip();
+    drawCelestialBody(ctx, width, height, atmosphere);
+    ctx.restore();
+  }
 
   // Clouds
   clouds.forEach(cl => {
@@ -878,43 +1102,53 @@ export function drawBackground(
   });
 }
 
-function drawCelestialBody(ctx: CanvasRenderingContext2D, width: number, atmosphere?: Atmosphere) {
-  const cx = width - 100;
-  const cy = 45;
-  const r = 16;
+function drawCelestialBody(ctx: CanvasRenderingContext2D, width: number, height: number, atmosphere: Atmosphere) {
+  const horizon = height * 0.82;
+  const { sun, moon } = atmosphere;
 
-  const night = atmosphere ? atmosphere.night : 0;
-  const sunAlpha = 1 - night;
-  const moonAlpha = night;
+  if (sun.visible) {
+    const cx = sun.x * width;
+    const cy = sun.y * height;
+    const r = 17;
+    // Warmer color when low above the horizon
+    const elevation = Math.max(0, Math.min(1, (horizon - cy) / (horizon * 0.7)));
+    const color = elevation < 0.35 ? '#fb923c' : elevation < 0.6 ? '#fbbf24' : '#fde047';
 
-  if (sunAlpha > 0.02) {
     ctx.save();
-    ctx.globalAlpha = sunAlpha;
-    ctx.fillStyle = '#fde047';
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r + 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.fill();
-
-    // Subtle sun rays
-    drawPixelRect(ctx, cx - 2, cy - 22, 4, 4, '#fef08a');
-    drawPixelRect(ctx, cx - 2, cy + 18, 4, 4, '#fef08a');
-    drawPixelRect(ctx, cx - 22, cy - 2, 4, 4, '#fef08a');
-    drawPixelRect(ctx, cx + 18, cy - 2, 4, 4, '#fef08a');
-    ctx.restore();
   }
 
-  if (moonAlpha > 0.02) {
+  if (moon.visible) {
+    const cx = moon.x * width;
+    const cy = moon.y * height;
+    const r = 15;
+
+    // Soft glow halo
     ctx.save();
-    ctx.globalAlpha = moonAlpha;
-    ctx.fillStyle = '#f3f4f6';
+    ctx.globalAlpha = 0.22;
+    ctx.fillStyle = '#dbeafe';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r + 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Crescent moon (even-odd cutout)
+    ctx.fillStyle = '#f4f4f5';
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fill();
-
-    drawPixelRect(ctx, cx - 6, cy - 6, 5, 5, '#cbd5e1');
-    drawPixelRect(ctx, cx + 2, cy + 2, 4, 4, '#cbd5e1');
-    drawPixelRect(ctx, cx - 3, cy + 5, 3, 3, '#cbd5e1');
-    ctx.restore();
+    ctx.moveTo(cx + r * 0.5 + r * 0.82, cy - r * 0.12);
+    ctx.arc(cx + r * 0.5, cy - r * 0.12, r * 0.82, 0, Math.PI * 2);
+    ctx.fill('evenodd');
   }
 }
 
@@ -965,34 +1199,208 @@ export function drawGround(
 }
 
 // ----------------------------------------------------
-// PARALLAX LAYERS, ATMOSPHERE, WEATHER, BANNER
+// BIOME PARALLAX LAYERS, ATMOSPHERE, WEATHER, BANNER
 // ----------------------------------------------------
-export function drawParallax(
+const BIOME_COLORS: Record<ThemeMode, Record<BiomeType, { far: string; near: string }>> = {
+  light: {
+    fields: { far: '#d3dcc4', near: '#bcc9ab' },
+    forest: { far: '#c3ccb9', near: '#a3b096' },
+    mountains: { far: '#d8d5d1', near: '#bdb9b4' },
+    hills: { far: '#d6d3cf', near: '#c2beb8' },
+    desert: { far: '#e2d5bc', near: '#cfbd9a' }
+  },
+  dark: {
+    fields: { far: '#1e241d', near: '#283226' },
+    forest: { far: '#1b231b', near: '#223022' },
+    mountains: { far: '#20202a', near: '#2b2b38' },
+    hills: { far: '#20202a', near: '#2b2b38' },
+    desert: { far: '#2a2318', near: '#3a2f1e' }
+  }
+};
+
+export function drawBiome(
   ctx: CanvasRenderingContext2D,
   groundY: number,
   theme: ThemeMode,
-  farHills: ParallaxLayerObject[],
-  midDunes: ParallaxLayerObject[]
+  biome: BiomeType,
+  layer: 'far' | 'mid',
+  objects: ParallaxLayerObject[],
+  alpha: number,
+  snowAmount: number
 ) {
-  const farColor = theme === 'dark' ? '#20202a' : '#d6d3cf';
-  const nearColor = theme === 'dark' ? '#2b2b38' : '#c2beb8';
+  if (alpha <= 0.01) return;
 
-  const drawLayer = (layer: ParallaxLayerObject[], color: string, yOffset: number) => {
-    layer.forEach(h => {
-      const steps = 7;
-      const stepH = h.height / steps;
-      for (let s = 0; s < steps; s++) {
-        const rowW = h.width * ((s + 1) / steps);
-        const rowX = h.x + (h.width - rowW) / 2;
-        // Slight jaggedness per variant so silhouettes differ
-        const skew = h.variant === 0 ? 0 : h.variant === 1 ? rowW * 0.06 : -rowW * 0.05;
-        drawPixelRect(ctx, rowX + skew, groundY + yOffset - h.height + s * stepH, rowW, stepH + 1, color);
-      }
-    });
-  };
+  const palette = BIOME_COLORS[theme][biome];
+  const color = layer === 'far' ? palette.far : palette.near;
+  const yOffset = layer === 'far' ? -2 : 0;
 
-  drawLayer(farHills, farColor, -2);
-  drawLayer(midDunes, nearColor, 0);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  objects.forEach(o => {
+    const x = Math.round(o.x);
+    const baseY = groundY + yOffset;
+    const w = Math.round(o.width);
+    const h = Math.round(o.height);
+
+    switch (biome) {
+      case 'mountains':
+        drawMountain(ctx, x, baseY, w, h, color, o.variant, layer === 'far' ? snowAmount : 0);
+        break;
+      case 'forest':
+        drawTreeCluster(ctx, x, baseY, w, h, color, o.variant);
+        break;
+      case 'fields':
+        drawFieldMound(ctx, x, baseY, w, h, color, o.variant);
+        break;
+      case 'desert':
+        drawDesertShape(ctx, x, baseY, w, h, color, o.variant, layer);
+        break;
+      default:
+        drawRoundedHill(ctx, x, baseY, w, h, color, o.variant);
+        break;
+    }
+  });
+
+  ctx.restore();
+}
+
+function drawRoundedHill(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  baseY: number,
+  w: number,
+  h: number,
+  color: string,
+  variant: number
+) {
+  const steps = 7;
+  const stepH = h / steps;
+  for (let s = 0; s < steps; s++) {
+    const t = (s + 1) / steps;
+    const rowW = w * Math.pow(t, 0.6);
+    const lean = (variant - 1) * w * 0.03;
+    drawPixelRect(ctx, x + (w - rowW) / 2 + lean, baseY - h + s * stepH, rowW, stepH + 1, color);
+  }
+}
+
+function drawMountain(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  baseY: number,
+  w: number,
+  h: number,
+  color: string,
+  variant: number,
+  snowAmount: number
+) {
+  const steps = 8;
+  const stepH = h / steps;
+  const lean = (variant - 1) * w * 0.06;
+
+  for (let s = 0; s < steps; s++) {
+    const t = (s + 1) / steps;
+    const rowW = w * Math.pow(t, 1.4);
+    const jag = variant === 2 && s === 2 ? rowW * 0.12 : 0;
+    drawPixelRect(ctx, x + (w - rowW) / 2 + lean * (1 - t), baseY - h + s * stepH, rowW + jag, stepH + 1, color);
+  }
+
+  // Snow caps fade in with snowy weather: narrow at the peak, wider down the slopes
+  if (snowAmount > 0.02) {
+    ctx.save();
+    ctx.globalAlpha *= snowAmount;
+    const snowSteps = Math.max(2, Math.round(steps * 0.35));
+    for (let s = 0; s < snowSteps; s++) {
+      const t = (s + 1) / steps;
+      const rowW = w * Math.pow(t, 1.4);
+      const jag = variant === 2 && s === 2 ? rowW * 0.12 : 0;
+      const snowW = (rowW + jag) * 0.85;
+      drawPixelRect(ctx, x + (w - rowW) / 2 + lean * (1 - t) + ((rowW + jag) - snowW) / 2, baseY - h + s * stepH, snowW, stepH + 1, '#ffffff');
+    }
+    ctx.restore();
+  }
+}
+
+function drawTreeCluster(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  baseY: number,
+  w: number,
+  h: number,
+  color: string,
+  variant: number
+) {
+  const count = 2 + variant;
+
+  for (let i = 0; i < count; i++) {
+    const cx = x + (w * (i + 0.5)) / count;
+    const scale = 0.72 + ((i * 53 + variant * 17) % 10) / 28;
+    const th = h * scale;
+    const trunkW = Math.max(3, Math.round(th * 0.08));
+    const trunkH = th * 0.32;
+
+    drawPixelRect(ctx, cx - trunkW / 2, baseY - trunkH, trunkW, trunkH, color);
+    drawPixelRect(ctx, cx - trunkW / 2 - 2, baseY - 3, trunkW + 4, 3, color);
+
+    // Stacked pine canopy tiers
+    const tiers = 3;
+    for (let tIdx = 0; tIdx < tiers; tIdx++) {
+      const tierW = th * (0.62 - tIdx * 0.14);
+      const tierH = th * 0.28;
+      const tierY = baseY - trunkH - tierH * (tiers - tIdx);
+      drawPixelRect(ctx, cx - tierW / 2, tierY, tierW, tierH + 1, color);
+    }
+  }
+}
+
+function drawFieldMound(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  baseY: number,
+  w: number,
+  h: number,
+  color: string,
+  variant: number
+) {
+  drawRoundedHill(ctx, x, baseY, w, h, color, variant);
+
+  // Grass tufts on the crest
+  const tufts = 3 + variant * 2;
+  for (let i = 0; i < tufts; i++) {
+    const tx = x + (w * (i + 1)) / (tufts + 1);
+    const th = 3 + ((i * 7 + variant) % 3);
+    drawPixelRect(ctx, tx, baseY - h - th, 2, th, color);
+  }
+}
+
+function drawDesertShape(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  baseY: number,
+  w: number,
+  h: number,
+  color: string,
+  variant: number,
+  layer: 'far' | 'mid'
+) {
+  if (layer === 'far' && variant === 2) {
+    // Flat-topped mesa
+    const topW = w * 0.66;
+    drawPixelRect(ctx, x + (w - topW) / 2, baseY - h, topW, h * 0.55, color);
+    drawPixelRect(ctx, x + (w - topW * 1.25) / 2, baseY - h * 0.45, topW * 1.25, h * 0.45, color);
+    drawPixelRect(ctx, x, baseY - h * 0.06, w, h * 0.06, color);
+    return;
+  }
+
+  // Smooth dune
+  const steps = 7;
+  const stepH = h / steps;
+  for (let s = 0; s < steps; s++) {
+    const t = (s + 1) / steps;
+    const rowW = w * Math.pow(t, 0.75);
+    const lean = (variant - 1) * w * 0.04;
+    drawPixelRect(ctx, x + (w - rowW) / 2 + lean, baseY - h + s * stepH, rowW, stepH + 1, color);
+  }
 }
 
 const WEATHER_TINTS: Record<WeatherType, string> = {

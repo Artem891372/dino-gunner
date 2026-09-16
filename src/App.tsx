@@ -4,6 +4,7 @@ import {
   GameMode,
   WeaponType,
   DinoSkin,
+  DayPhase,
   AISettings,
   AITelemetry,
   DeathInfo
@@ -35,6 +36,9 @@ export const App: React.FC = () => {
   const [enableCrtEffect, setEnableCrtEffect] = useState<boolean>(false);
   const [isMusicOn, setIsMusicOn] = useState<boolean>(true);
   const [isCleanScreen, setIsCleanScreen] = useState<boolean>(false);
+  const [isAutoSkin, setIsAutoSkin] = useState<boolean>(true);
+  const [isAutoTheme, setIsAutoTheme] = useState<boolean>(true);
+  const isAutoThemeRef = useRef<boolean>(true);
 
   // Score & Game Stats
   const [score, setScore] = useState<number>(0);
@@ -101,6 +105,14 @@ export const App: React.FC = () => {
       },
       (weapon) => {
         setCurrentWeapon(weapon);
+      },
+      (skin) => {
+        setCurrentSkin(skin);
+      },
+      (phase) => {
+        if (isAutoThemeRef.current) {
+          setTheme(phase === 'day' || phase === 'dawn' ? 'light' : 'dark');
+        }
       }
     );
 
@@ -149,6 +161,21 @@ export const App: React.FC = () => {
       engineRef.current.currentSkin = currentSkin;
     }
   }, [currentSkin]);
+
+  useEffect(() => {
+    if (engineRef.current) {
+      engineRef.current.autoSkin = isAutoSkin;
+    }
+  }, [isAutoSkin]);
+
+  // Auto theme follows the in-game day/night cycle
+  useEffect(() => {
+    isAutoThemeRef.current = isAutoTheme;
+    if (isAutoTheme && engineRef.current) {
+      const phase: DayPhase = engineRef.current.dayPhase;
+      setTheme(phase === 'day' || phase === 'dawn' ? 'light' : 'dark');
+    }
+  }, [isAutoTheme]);
 
   useEffect(() => {
     if (engineRef.current) {
@@ -266,6 +293,7 @@ export const App: React.FC = () => {
         setGameMode(m => (m === 'ai' ? 'manual' : 'ai'));
       } else if (e.code === 'KeyT') {
         e.preventDefault();
+        setIsAutoTheme(false);
         setTheme(t => (t === 'light' ? 'dark' : 'light'));
       } else if (e.code === 'KeyM') {
         e.preventDefault();
@@ -351,7 +379,12 @@ export const App: React.FC = () => {
       {!isCleanScreen && (
         <HeaderNav
           theme={theme}
-          onToggleTheme={() => setTheme(t => (t === 'light' ? 'dark' : 'light'))}
+          onToggleTheme={() => {
+            setIsAutoTheme(false);
+            setTheme(t => (t === 'light' ? 'dark' : 'light'));
+          }}
+          isAutoTheme={isAutoTheme}
+          onToggleAutoTheme={() => setIsAutoTheme(v => !v)}
           gameMode={gameMode}
           onToggleGameMode={() => setGameMode(m => (m === 'ai' ? 'manual' : 'ai'))}
           isMuted={isMuted}
@@ -450,7 +483,12 @@ export const App: React.FC = () => {
               currentWeapon={currentWeapon}
               onSelectWeapon={setCurrentWeapon}
               currentSkin={currentSkin}
-              onSelectSkin={setCurrentSkin}
+              onSelectSkin={skin => {
+                setCurrentSkin(skin);
+                setIsAutoSkin(false);
+              }}
+              isAutoSkin={isAutoSkin}
+              onSelectAutoSkin={() => setIsAutoSkin(true)}
               theme={theme}
             />
 

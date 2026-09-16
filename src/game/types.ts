@@ -37,7 +37,12 @@ export type ObstacleType =
   | 'cactus_large'
   | 'rock'
   | 'spikes'
-  | 'barricade';
+  | 'barricade'
+  | 'bush'
+  | 'stump'
+  | 'log'
+  | 'tumbleweed'
+  | 'crate';
 
 export type WeatherType = 'clear' | 'rain' | 'snow' | 'sandstorm';
 
@@ -50,6 +55,19 @@ export interface ParallaxLayerObject {
   width: number;
   height: number;
   variant: number;
+}
+
+export type BiomeType = 'fields' | 'forest' | 'mountains' | 'hills' | 'desert';
+
+export interface BiomeTerrain {
+  far: ParallaxLayerObject[];
+  mid: ParallaxLayerObject[];
+}
+
+export interface CelestialBody {
+  x: number; // normalized 0..1 (can exceed while off-screen)
+  y: number; // normalized 0..1, 0.82 is the horizon
+  visible: boolean;
 }
 
 export interface WeatherParticle {
@@ -69,18 +87,22 @@ export interface Atmosphere {
   weatherStrength: number; // 0..1 crossfade of the incoming weather
   previousWeather: WeatherType;
   previousStrength: number; // 0..1 crossfade of the outgoing weather
+  sun: CelestialBody;
+  moon: CelestialBody;
 }
 
 export type GroundEnemyType = 
   | 'robot_drone'
   | 'scorpion'
   | 'cyber_skull'
-  | 'bone_raptor';
+  | 'bone_raptor'
+  | 'sand_spider';
 
 export type FlyingEnemyType = 
   | 'pterodactyl'
   | 'flying_drone'
-  | 'mutant_bat';
+  | 'mutant_bat'
+  | 'vulture';
 
 export interface GameObject {
   id: number;

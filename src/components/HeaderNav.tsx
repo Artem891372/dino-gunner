@@ -5,6 +5,8 @@ import { Sun, Moon, Bot, Gamepad2, Volume2, VolumeX, Pause, Play, Sparkles, Musi
 interface HeaderNavProps {
   theme: ThemeMode;
   onToggleTheme: () => void;
+  isAutoTheme: boolean;
+  onToggleAutoTheme: () => void;
   gameMode: GameMode;
   onToggleGameMode: () => void;
   isMuted: boolean;
@@ -21,6 +23,8 @@ interface HeaderNavProps {
 export const HeaderNav: React.FC<HeaderNavProps> = ({
   theme,
   onToggleTheme,
+  isAutoTheme,
+  onToggleAutoTheme,
   gameMode,
   onToggleGameMode,
   isMuted,
@@ -97,6 +101,27 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
                 <span>РУЧНОЙ</span>
               </>
             )}
+          </button>
+
+          {/* Auto theme by day/night cycle */}
+          <button
+            onClick={onToggleAutoTheme}
+            className={`px-2 py-2 rounded-lg border font-pixel text-[9px] cursor-pointer transition-colors ${
+              isAutoTheme
+                ? isDark
+                  ? 'bg-cyan-950/60 border-cyan-700 text-cyan-300'
+                  : 'bg-cyan-100 border-cyan-300 text-cyan-700'
+                : isDark
+                ? 'bg-zinc-900 border-zinc-700 text-zinc-500 hover:bg-zinc-800'
+                : 'bg-stone-100 border-stone-300 text-stone-400 hover:bg-stone-200'
+            }`}
+            title={
+              isAutoTheme
+                ? 'Авто-тема по циклу день/ночь включена'
+                : 'Интерфейс следует за циклом день/ночь'
+            }
+          >
+            АВТО
           </button>
 
           {/* Theme Switcher (Light / Dark) */}
