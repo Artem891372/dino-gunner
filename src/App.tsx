@@ -434,7 +434,7 @@ export const App: React.FC = () => {
             onMouseDown={handleCanvasMouseDown}
             onMouseMove={handleCanvasMouseMove}
             className="w-full block pixelated cursor-crosshair select-none"
-            style={{ minHeight: '260px' }}
+            style={{ minHeight: '260px', filter: 'saturate(1.9) brightness(1.06) contrast(1.12)' }}
           />
 
           {/* CRT scanline overlay effect (optional) */}
